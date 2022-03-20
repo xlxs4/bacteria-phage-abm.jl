@@ -132,7 +132,10 @@ end
 function complex_step!(model)
     bacteria_death_inherent(by_single_type(Bacterium)(model))
     bacteria_death_lysis(by_single_type(Bacterium)(model))
-    phage_decay.(by_single_type(Phage)(model))
+
+    ids = by_single_type(Phage)(model)
+    filter!(id -> model[id].state === :free, ids)
+    phage_decay.(ids)
 end
 ##
 
