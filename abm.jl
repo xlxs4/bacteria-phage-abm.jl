@@ -13,7 +13,7 @@ using Random
     phages_inside::Vector{Int}
 end
 
-@agent Virus GridAgent{2} begin
+@agent Phage GridAgent{2} begin
     species::Symbol
     kind::Symbol
     state::Symbol
@@ -37,6 +37,7 @@ Base.@kwdef mutable struct Parameters
     carrying_capacity::Int = 3 * bacteria_count
     growth_rate::Float64 = 0.6
     decay_factor::Float64 = 0.2
+    p_burst = 0.9
 end
 ##
 
@@ -47,7 +48,7 @@ function initialize(; N=200, M=20, seed=125)
     rng = Random.MersenneTwister(seed)
 
     model = ABM(
-        Union{Bacterium,Virus}, space;
+        Union{Bacterium,Phage}, space;
         properties, rng
     )
 
@@ -65,7 +66,7 @@ function initialize(; N=200, M=20, seed=125)
         else
             kind = :deficient
         end
-        add_agent!(Virus, model, roll < 0.5 ? :a : :b, kind, :free, 0.0)
+        add_agent!(Phage, model, roll < 0.5 ? :a : :b, kind, :free, 0.0)
     end
 
     return model
@@ -74,6 +75,46 @@ end
 
 ##
 p_death(a, b, m) = a + ((1 - a) / (1 + exp(-b * (-m))))
+
+p_phage_decay(decay_factor, time_in_state) = 1 - (1 * exp(-decay_factor * time_in_state))
+
+function phage_decay(phage)
+    if rand() < p_phage_decay(model.decay_factor, model[phage].time_in_state)
+        kill_agent!(phage, model)
+    end
+end
+
+function tick_phage(phage)
+    model[phage].time_in_state += 1
+end
+
+function bacteria_death_inherent(bacteria)
+    for id ∈ bacteria
+        if rand() < p_death(model.a, model.b, model.m)
+            genocide!(model, model[id].phages_inside)
+            kill_agent!(id, model)
+        end
+    end
+end
+
+function bacteria_death_lysis(bacteria)
+    for id ∈ bacteria
+        phages_inside = model[id].phages_inside
+        if !isempty(phages_inside)
+            tick_phage.(phages_inside)
+            for phage ∈ phages_inside
+                agent = model[phage]
+                if (agent.time_in_state ≥ model.latent_period) && (agent.kind === :virulent || agent.kind === :induced_temperate)
+                    if rand() < p_burst
+                        println("TODO: burst!")
+                    end
+                end
+            end
+
+            isempty(model[id].phages_inside) && kill_agent!(id, model)
+        end
+    end
+end
 ##
 
 ##
@@ -89,13 +130,9 @@ end
 
 ##
 function complex_step!(model)
-    for id ∈ by_single_type(Bacterium)(model)
-        if rand() < p_death(model.a, model.b, model.m)
-            genocide!(model, model[id].phages_inside)
-            println("killing $id")
-            kill_agent!(id, model)
-        end
-    end
+    bacteria_death_inherent(by_single_type(Bacterium)(model))
+    bacteria_death_lysis(by_single_type(Bacterium)(model))
+    phage_decay.(by_single_type(Phage)(model))
 end
 ##
 
