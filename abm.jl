@@ -10,7 +10,7 @@ using Random
 ##
 @agent Bacterium GridAgent{2} begin
     species::Symbol
-    phages_inside::Int
+    phages_inside::Vector{Int}
 end
 
 @agent Virus GridAgent{2} begin
@@ -48,12 +48,12 @@ function initialize(; N=200, M=20, seed=125)
 
     model = ABM(
         Union{Bacterium,Virus}, space;
-        properties, rng, scheduler=Schedulers.randomly
+        properties, rng
     )
 
     for n ∈ 1:N/2
         roll = rand()
-        agent = Bacterium(n, (1, 1), roll < 0.5 ? :a : :b, 0)
+        agent = Bacterium(n, (1, 1), roll < 0.5 ? :a : :b, Vector{Int}())
         add_agent_single!(agent, model)
     end
     for n ∈ N/2+1:N
@@ -73,16 +73,28 @@ end
 ##
 
 ##
-# Dummy step function
-function agent_step!(agent, model)
-    if agent isa Virus
-        println(agent.id, agent.pos)
+p_death(a, b, m) = a + ((1 - a) / (1 + exp(-b * (-m))))
+##
+
+##
+function by_single_type(t::DataType)
+    function single_type(model::ABM)
+        ids = collect(allids(model))
+        filter!(id -> typeof(model[id]) == t, ids)
+        return ids
     end
-    for neighbor ∈ nearby_agents(agent, model)
-        if neighbor.species == :a
-            println(neighbor.id)
+    return single_type
+end
+##
+
+##
+function complex_step!(model)
+    for id ∈ by_single_type(Bacterium)(model)
+        if rand() < p_death(model.a, model.b, model.m)
+            genocide!(model, model[id].phages_inside)
+            println("killing $id")
+            kill_agent!(id, model)
         end
-        return
     end
 end
 ##
@@ -92,5 +104,5 @@ model = initialize()
 ##
 
 ##
-step!(model, agent_step!)
+step!(model, dummystep, complex_step!, 1)
 ##
