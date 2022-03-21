@@ -135,6 +135,7 @@ function complex_step!(model)
 
     ids = by_single_type(Phage)(model)
     filter!(id -> model[id].state === :free, ids)
+    tick_phage.(ids)
     phage_decay.(ids)
 
     model.properties.bacteria_count = length(by_single_type(Bacterium)(model))
@@ -144,8 +145,7 @@ end
 
 ##
 model = initialize()
-##
 
-##
-run!(model, dummystep, complex_step!, 9; mdata=[:bacteria_count])
+run!(model, dummystep, complex_step!, 4;
+    mdata=[:bacteria_count, :phages_count])
 ##
