@@ -55,7 +55,7 @@ function initialize(; N=200, M=20, seed=125)
     for n ∈ 1:N/2
         roll = rand()
         agent = Bacterium(n, (1, 1), roll < 0.5 ? :a : :b, Vector{Int}())
-        add_agent_single!(agent, model)
+        add_bacterium_single!(agent, model)
     end
     for n ∈ N/2+1:N
         roll = rand()
@@ -126,6 +126,35 @@ function by_single_type(t::DataType)
     end
     return single_type
 end
+
+function add_bacterium_single!(agent::A, model::ABM{<:Agents.DiscreteSpace,A}) where {A<:AbstractAgent}
+    function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, cutoff=0.998)
+        function has_no_bacterium(pos, model)
+            return !any((id -> model[id] isa Bacterium).(ids_in_position(pos, model)))
+        end
+
+        function no_bacterium_positions(model::ABM{<:Agents.DiscreteSpace})
+            return Iterators.filter(i -> has_no_bacterium(i, model), positions(model))
+        end
+
+        if clamp(nagents(model) / prod(size(model.space.s)), 0.0, 1.0) < cutoff
+            while true
+                pos = random_position(model)
+                has_no_bacterium(pos, model) && return pos
+            end
+        else
+            no_bacterium = no_bacterium_positions(model)
+            isempty(no_bacterium) && return nothing
+            return rand(model.rng, collect(no_bacterium))
+        end
+    end
+
+    position = random_without_bacterium(model)
+    isnothing(position) && return nothing
+    agent.pos = position
+    add_agent_pos!(agent, model)
+    return agent
+end
 ##
 
 ##
@@ -145,7 +174,9 @@ end
 
 ##
 model = initialize()
+##
 
+##
 run!(model, dummystep, complex_step!, 4;
     mdata=[:bacteria_count, :phages_count])
 ##
