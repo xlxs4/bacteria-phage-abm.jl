@@ -121,10 +121,22 @@ end
 function by_single_type(t::DataType)
     function single_type(model::ABM)
         ids = collect(allids(model))
-        filter!(id -> typeof(model[id]) == t, ids)
+        filter!(id -> model[id] isa t, ids)
         return ids
     end
     return single_type
+end
+
+function nearby_t(t::DataType, id)
+    function keep_t_ids(pos)
+        return (id -> model[id] isa t ? id : nothing).(ids_in_position(pos, model))
+    end
+
+    nearby_pos = collect(nearby_positions(model[id].pos, model, model.properties.infection_distance))
+    filter!(pos -> !isempty(pos, model), nearby_pos)
+    ids = filter(v -> !isempty(v), keep_t_ids.(nearby_pos))
+    ids = reduce(vcat, ids)
+    return convert(Vector{Int}, ids[ids.!=nothing])
 end
 
 function add_bacterium_single!(agent::A, model::ABM{<:Agents.DiscreteSpace,A}) where {A<:AbstractAgent}
