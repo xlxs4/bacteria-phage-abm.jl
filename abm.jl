@@ -154,13 +154,13 @@ function burst(phage, cell, model)
     kill_agent!(cell, model)
 end
 
-function grow(cell, model)
+function grow(cell, p_grow, model)
     function has_no_bacteria(pos)
         ids = ids_in_position(pos, model)
         return isempty(ids) || !any(id -> model[id] isa Bacterium, ids)
     end
 
-    !(rand() < p_grow(model)) && return nothing
+    !(rand() < p_grow) && return nothing
 
     environment = model.properties.environment
     if environment === :well_mixed
@@ -302,8 +302,9 @@ function complex_step!(model)
 
     cells = by_single_type(Bacterium)(model)
     filter!(id -> isempty(model[id].phages_inside), cells)
+    p_grow = p_grow(model)
     for cell ∈ cells
-        grow(cell, model)
+        grow(cell, p_grow, model)
     end
 
     model.properties.bacteria_count = length(by_single_type(Bacterium)(model))
