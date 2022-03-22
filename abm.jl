@@ -85,36 +85,36 @@ p_death(a, b, m) = a + ((1 - a) / (1 + exp(-b * (-m))))
 
 p_phage_decay(decay_factor, time_in_state) = 1 - (1 * exp(-decay_factor * time_in_state))
 
-function p_adsorption(cell)
-    nearby_phages = nearby_t(Phage, cell)
+function p_adsorption(cell, model)
+    nearby_phages = nearby_t(Phage, cell, model)
     p_host = model[cell].species === :a ? 0.9 : 0.1 # Tell the compiler that these are all ::Bacterium to help with type inference
     return p_host / (1 + exp(-length(nearby_phages)))
 end
 
-function p_lysis(phage)
-    nearby_phages = nearby_t(Phage, phage)
+function p_lysis(phage, α, κ)
+    nearby_phages = nearby_t(Phage, phage, model)
     nearby_phages = isnothing(nearby_phages) ? 0 : length(nearby_phages)
-    return 1 / (1 + model.properties.α * exp(-nearby_phages + model.properties.κ))
+    return 1 / (1 + α * exp(-nearby_phages + κ))
 end
 
-function phage_decay(phage)
+function phage_decay(phage, model)
     if rand() < p_phage_decay(model.decay_factor, model[phage].time_in_state)
         kill_agent!(phage, model)
     end
 end
 
-function tick_phage(phage)
+function tick_phage(phage, model)
     model[phage].time_in_state += 1
 end
 
-function infect(phage, cell)
+function infect(phage, cell, model)
     model[phage].state = :in_host
     model[phage].time_in_state = 0
 
     push!(model[cell].phages_inside, phage)
 end
 
-function bacteria_death_inherent(bacteria)
+function bacteria_death_inherent(bacteria, model)
     for id ∈ bacteria
         if rand() < p_death(model.a, model.b, model.m)
             genocide!(model, model[id].phages_inside)
@@ -123,12 +123,12 @@ function bacteria_death_inherent(bacteria)
     end
 end
 
-function bacteria_death_lysis(bacteria)
+function bacteria_death_lysis(bacteria, model)
     for id ∈ bacteria
         phages_inside = model[id].phages_inside
         if !isempty(phages_inside)
-            tick_phage.(phages_inside)
             for phage ∈ phages_inside
+                tick_phage(phage, model)
                 agent = model[phage]
                 if (agent.time_in_state ≥ model.latent_period) && (agent.kind === :virulent || agent.kind === :induced_temperate)
                     if rand() < model.properties.p_burst
@@ -153,7 +153,7 @@ function by_single_type(t::DataType)
     return single_type
 end
 
-function nearby_t(t::DataType, id)
+function nearby_t(t::DataType, id, model)
     function keep_t_ids(pos)
         return (id -> model[id] isa t ? id : nothing).(ids_in_position(pos, model))
     end
@@ -200,30 +200,32 @@ end
 
 ##
 function complex_step!(model)
-    bacteria_death_inherent(by_single_type(Bacterium)(model))
-    bacteria_death_lysis(by_single_type(Bacterium)(model))
+    bacteria_death_inherent(by_single_type(Bacterium)(model), model)
+    bacteria_death_lysis(by_single_type(Bacterium)(model), model)
 
     phages = by_single_type(Phage)(model)
     filter!(id -> model[id].state === :free, phages) # Tell the compiler these are all ::Phage to help with type inference
     for phage ∈ phages
-        nearby_cells = nearby_t(Bacterium, phage)
+        nearby_cells = nearby_t(Bacterium, phage, model)
         isnothing(nearby_cells) && continue
         target_cell = rand(nearby_cells)
-        if rand() < p_adsorption(target_cell)
+        if rand() < p_adsorption(target_cell, model)
             kind = model[phage].kind
             if kind === :temperate
-                if rand() < p_lysis(phage)
+                if rand() < p_lysis(phage, model.properties.α, model.properties.κ)
                     model[phage].kind = :induced_temperate
                 end
             end
             if kind === :virulent || kind === :induced_temperate
-                infect(phage, target_cell)
+                infect(phage, target_cell, model)
             end
         end
     end
     filter!(id -> model[id].state === :free, phages)
-    tick_phage.(phages)
-    phage_decay.(phages)
+    for phage ∈ phages
+        tick_phage(phage, model)
+        phage_decay(phage, model)
+    end
 
     model.properties.bacteria_count = length(by_single_type(Bacterium)(model))
     model.properties.phages_count = length(by_single_type(Phage)(model))
