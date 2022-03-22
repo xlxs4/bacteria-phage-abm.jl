@@ -3,6 +3,13 @@ using Revise
 ##
 
 ##
+using BenchmarkTools
+using Profile
+using ProfileSVG
+using JET
+##
+
+##
 using Agents
 using Random
 ##
@@ -105,7 +112,7 @@ function bacteria_death_lysis(bacteria)
             for phage ∈ phages_inside
                 agent = model[phage]
                 if (agent.time_in_state ≥ model.latent_period) && (agent.kind === :virulent || agent.kind === :induced_temperate)
-                    if rand() < p_burst
+                    if rand() < model.properties.p_burst
                         println("TODO: burst!")
                     end
                 end
@@ -134,6 +141,8 @@ function nearby_t(t::DataType, id)
 
     nearby_pos = collect(nearby_positions(model[id].pos, model, model.properties.infection_distance))
     filter!(pos -> !isempty(pos, model), nearby_pos)
+    isempty(nearby_pos) && return nothing
+
     ids = filter(v -> !isempty(v), keep_t_ids.(nearby_pos))
     ids = reduce(vcat, ids)
     return convert(Vector{Int}, ids[ids.!=nothing])
@@ -175,7 +184,8 @@ function complex_step!(model)
     bacteria_death_lysis(by_single_type(Bacterium)(model))
 
     ids = by_single_type(Phage)(model)
-    filter!(id -> model[id].state === :free, ids)
+    filter!(id -> model[id].state === :free, ids) # Tell the compiler these are all ::Phage to help with type inference
+    nearby_t.(Ref(Bacterium), ids)
     tick_phage.(ids)
     phage_decay.(ids)
 
