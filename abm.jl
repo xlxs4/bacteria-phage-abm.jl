@@ -60,8 +60,7 @@ function initialize(; N=200, M=20, seed=125)
     )
 
     for n ∈ 1:N/2
-        roll = rand()
-        agent = Bacterium(n, (1, 1), roll < 0.5 ? :a : :b, Vector{Int}())
+        agent = Bacterium(n, (1, 1), rand() < 0.5 ? :a : :b, Vector{Int}())
         add_bacterium_single!(agent, model)
     end
     for n ∈ N/2+1:N
@@ -73,7 +72,7 @@ function initialize(; N=200, M=20, seed=125)
         else
             kind = :deficient
         end
-        add_agent!(Phage, model, roll < 0.5 ? :a : :b, kind, :free, 0.0)
+        add_agent!(Phage, model, roll < 0.5 ? :a : :b, kind, :free, 0)
     end
 
     return model
@@ -114,6 +113,37 @@ function infect(phage, cell, model)
     push!(model[cell].phages_inside, phage)
 end
 
+function burst(phage, cell, model)
+    environment = model.properties.environment
+    if environment === :well_mixed
+        selected = positions(model, :random)
+    elseif environment === :spatially_structured
+        r = 1
+    elseif environment === :semi_solid
+        r = 3
+    end
+
+    if environment === :spatially_structured || environment === :semi_solid
+        nearby = collect(nearby_positions(model[phage].pos, model, r))
+        selected = rand(nearby, model.properties.burst_size)
+    end
+
+    for pos ∈ selected
+        roll = rand()
+        if roll < 0.45
+            kind = :temperate
+        elseif roll < 0.85
+            kind = :virulent
+        else
+            kind = :deficient
+        end
+        add_agent!(pos, Phage, model, roll < 0.5 ? :a : :b, kind, :free, 0)
+    end
+
+    genocide!(model, model[cell].phages_inside)
+    kill_agent!(cell, model)
+end
+
 function bacteria_death_inherent(bacteria, model)
     for id ∈ bacteria
         if rand() < p_death(model.a, model.b, model.m)
@@ -124,20 +154,19 @@ function bacteria_death_inherent(bacteria, model)
 end
 
 function bacteria_death_lysis(bacteria, model)
-    for id ∈ bacteria
-        phages_inside = model[id].phages_inside
+    for cell ∈ bacteria
+        phages_inside = model[cell].phages_inside
         if !isempty(phages_inside)
             for phage ∈ phages_inside
                 tick_phage(phage, model)
                 agent = model[phage]
                 if (agent.time_in_state ≥ model.latent_period) && (agent.kind === :virulent || agent.kind === :induced_temperate)
                     if rand() < model.properties.p_burst
-                        println("TODO: burst!") #FIXME
+                        burst(phage, cell, model)
+                        break
                     end
                 end
             end
-
-            isempty(model[id].phages_inside) && kill_agent!(id, model)
         end
     end
 end
