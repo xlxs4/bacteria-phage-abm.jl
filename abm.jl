@@ -84,16 +84,26 @@ p_death(a, b, m) = a + ((1 - a) / (1 + exp(-b * (-m))))
 
 p_phage_decay(decay_factor, time_in_state) = 1 - (1 * exp(-decay_factor * time_in_state))
 
+function p_lysis(phage, α, κ)
+    nearby_phages = nearby_t(Phage, phage, model)
+    nearby_phages = isnothing(nearby_phages) ? 0 : length(nearby_phages)
+    return 1 / (1 + α * exp(-nearby_phages + κ))
+end
+
 function p_adsorption(cell, model)
     nearby_phages = nearby_t(Phage, cell, model)
     p_host = model[cell].species === :a ? 0.9 : 0.1 # Tell the compiler that these are all ::Bacterium to help with type inference
     return p_host / (1 + exp(-length(nearby_phages)))
 end
 
-function p_lysis(phage, α, κ)
-    nearby_phages = nearby_t(Phage, phage, model)
-    nearby_phages = isnothing(nearby_phages) ? 0 : length(nearby_phages)
-    return 1 / (1 + α * exp(-nearby_phages + κ))
+function p_grow(model)
+    cells = by_single_type(Bacterium)(model)
+    filter!(id -> isempty(model[id].phages_inside), cells)
+    cell_count = length(cells)
+
+    properties = model.properties
+    ΔN = properties.growth_rate * cell_count * (1 - cell_count / properties.carrying_capacity)
+    return ΔN / cell_count
 end
 
 function phage_decay(phage, model)
@@ -142,6 +152,35 @@ function burst(phage, cell, model)
 
     genocide!(model, model[cell].phages_inside)
     kill_agent!(cell, model)
+end
+
+function grow(cell, model)
+    function has_no_bacteria(pos)
+        ids = ids_in_position(pos, model)
+        return isempty(ids) || !any(id -> model[id] isa Bacterium, ids)
+    end
+
+    !(rand() < p_grow(model)) && return nothing
+
+    environment = model.properties.environment
+    if environment === :well_mixed
+        selected = positions(model, :random)
+    elseif environment === :spatially_structured
+        r = 1
+    elseif environment === :semi_solid
+        r = 3
+    end
+
+    if environment === :spatially_structured || environment === :semi_solid
+        selected = collect(nearby_positions(model[cell].pos, model, r))
+    end
+
+    filter!(has_no_bacteria, selected)
+    isempty(selected) && return nothing
+
+    target = rand(selected)
+    add_agent!(target, Bacterium, model,
+        rand() < 0.5 ? :a : :b, Vector{Int}())
 end
 
 function bacteria_death_inherent(bacteria, model)
@@ -237,6 +276,7 @@ function complex_step!(model)
     for phage ∈ phages
         nearby_cells = nearby_t(Bacterium, phage, model)
         isnothing(nearby_cells) && continue
+
         target_cell = rand(nearby_cells)
         if rand() < p_adsorption(target_cell, model)
             kind = model[phage].kind
@@ -249,11 +289,21 @@ function complex_step!(model)
                 infect(phage, target_cell, model)
             end
         end
+
+        if model[phage].state === :free
+            tick_phage(phage, model)
+        end
     end
+
     filter!(id -> model[id].state === :free, phages)
     for phage ∈ phages
-        tick_phage(phage, model)
         phage_decay(phage, model)
+    end
+
+    cells = by_single_type(Bacterium)(model)
+    filter!(id -> isempty(model[id].phages_inside), cells)
+    for cell ∈ cells
+        grow(cell, model)
     end
 
     model.properties.bacteria_count = length(by_single_type(Bacterium)(model))
