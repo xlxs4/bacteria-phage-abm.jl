@@ -276,15 +276,17 @@ function complex_step!(model)
 
     filter!(id -> model[id].state === :free, phages) # Tell the compiler these are all ::Phage to help with type inference
     for phage ∈ phages
+        agent = model[phage]
+
         nearby_cells = nearby_t(Bacterium, phage, model)
         isnothing(nearby_cells) && continue
 
         target_cell = rand(nearby_cells)
         if rand() < p_adsorption(target_cell, model)
-            kind = model[phage].kind
+            kind = agent.kind
             if kind === :temperate
                 if rand() < p_lysis(phage, model.properties.α, model.properties.κ)
-                    model[phage].kind = :induced_temperate
+                    agent.kind = :induced_temperate
                 end
             end
             if kind === :virulent || kind === :induced_temperate
@@ -292,7 +294,7 @@ function complex_step!(model)
             end
         end
 
-        if model[phage].state === :free
+        if agent.state === :free
             tick_phage(phage, model)
         end
     end
