@@ -154,6 +154,20 @@ function burst(phage, cell, model)
     kill_agent!(cell, model)
 end
 
+function diffuse(id, model)
+    agent = model[id]
+
+    r = 3
+    nearby = collect(nearby_positions(agent.pos, model, r))
+
+    if agent isa Phage
+        selected = rand(nearby)
+        move_agent!(agent, selected, model)
+    elseif agent isa Bacterium
+        move_bacterium_single!(agent, model, nearby)
+    end
+end
+
 function grow(cell, p_grow, model)
     function has_no_bacteria(pos)
         ids = ids_in_position(pos, model)
@@ -236,32 +250,61 @@ function nearby_t(t::DataType, id, model)
     return isempty(ids) ? nothing : ids
 end
 
-function add_bacterium_single!(agent::A, model::ABM{<:Agents.DiscreteSpace,A}) where {A<:AbstractAgent}
-    function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, cutoff=0.998)
-        function has_no_bacterium(pos, model)
-            return !any((id -> model[id] isa Bacterium).(ids_in_position(pos, model)))
-        end
-
-        function no_bacterium_positions(model::ABM{<:Agents.DiscreteSpace})
-            return Iterators.filter(i -> has_no_bacterium(i, model), positions(model))
-        end
-
-        if clamp(nagents(model) / prod(size(model.space.s)), 0.0, 1.0) < cutoff
-            while true
-                pos = random_position(model)
-                has_no_bacterium(pos, model) && return pos
-            end
-        else
-            no_bacterium = no_bacterium_positions(model)
-            isempty(no_bacterium) && return nothing
-            return rand(model.rng, collect(no_bacterium))
-        end
+function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, cutoff=0.998)
+    function has_no_bacterium(pos, model)
+        return !any((id -> model[id] isa Bacterium).(ids_in_position(pos, model)))
     end
 
-    position = random_without_bacterium(model)
+    function no_bacterium_positions(model::ABM{<:Agents.DiscreteSpace})
+        return Iterators.filter(i -> has_no_bacterium(i, model), positions(model))
+    end
+
+    if clamp(nagents(model) / prod(size(model.space.s)), 0.0, 1.0) < cutoff
+        while true
+            pos = random_position(model)
+            has_no_bacterium(pos, model) && return pos
+        end
+    else
+        no_bacterium = no_bacterium_positions(model)
+        isempty(no_bacterium) && return nothing
+        return rand(model.rng, collect(no_bacterium))
+    end
+end
+
+function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, positions::Vector{Tuple{Int,Int}})
+    function has_no_bacterium(pos, model)
+        return !any((id -> model[id] isa Bacterium).(ids_in_position(pos, model)))
+    end
+
+    function no_bacterium_positions(model::ABM{<:Agents.DiscreteSpace}, positions)
+        return Iterators.filter(i -> has_no_bacterium(i, model), positions)
+    end
+
+    no_bacterium = no_bacterium_positions(model, positions)
+    isempty(no_bacterium) && return nothing
+    return rand(model.rng, collect(no_bacterium))
+end
+
+function add_bacterium_single!(
+    agent::A,
+    model::ABM{<:Agents.DiscreteSpace,A};
+    cutoff=0.998
+) where {A<:AbstractAgent}
+    position = random_without_bacterium(model, cutoff)
     isnothing(position) && return nothing
     agent.pos = position
-    add_agent_pos!(agent, model)
+    add_agent_pos!(agent, model) >
+    return agent
+end
+
+function move_bacterium_single!(
+    agent::A,
+    model::ABM{<:Agents.DiscreteSpace,A},
+    positions
+) where {A<:AbstractAgent}
+    position = random_without_bacterium(model, positions)
+    isnothing(position) && return nothing
+    move_agent!(agent, position, model)
     return agent
 end
 ##
@@ -306,10 +349,21 @@ function complex_step!(model)
 
     cells = by_single_type(Bacterium)(model)
     filter!(id -> isempty(model[id].phages_inside), cells)
-    p_grow = p_grow(model)
+    p = p_grow(model)
     for cell ∈ cells
-        grow(cell, p_grow, model)
+        grow(cell, p, model)
     end
+
+    if model.properties.diffuse
+        environment = model.properties.environment
+        cells = by_single_type(Bacterium)(model)
+        phages = by_single_type(Phage)(model)
+        if environment === :semi_solid
+            diffuse.(cells, Ref(model))
+            diffuse.(phages, Ref(model))
+        end
+    end
+
 
     model.properties.bacteria_count = length(by_single_type(Bacterium)(model))
     model.properties.phages_count = length(by_single_type(Phage)(model))
