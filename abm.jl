@@ -359,8 +359,12 @@ function complex_step!(model)
         cells = by_single_type(Bacterium)(model)
         phages = by_single_type(Phage)(model)
         if environment === :semi_solid
-            diffuse.(cells, Ref(model))
-            diffuse.(phages, Ref(model))
+            for cell ∈ cells
+                diffuse(cell, model)
+            end
+            for phage ∈ phages
+                diffuse(phage, model)
+            end
         end
     end
 
