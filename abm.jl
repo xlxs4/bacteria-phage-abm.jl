@@ -30,7 +30,7 @@ end
 Base.@kwdef mutable struct Parameters
     bacteria_count::Int = 265
     phages_count::Int = 148
-    environment::Symbol = :semi_solid
+    environment::Symbol = :spatially_structured
     diffuse::Bool = true
     a::Float64 = 0.0
     b::Float64 = 0.08
@@ -126,7 +126,7 @@ end
 function burst(phage, cell, model)
     environment = model.properties.environment
     if environment === :well_mixed
-        selected = positions(model, :random)
+        nearby = positions(model, :random)
     elseif environment === :spatially_structured
         r = 1
     elseif environment === :semi_solid
@@ -135,9 +135,9 @@ function burst(phage, cell, model)
 
     if environment === :spatially_structured || environment === :semi_solid
         nearby = collect(nearby_positions(model[phage].pos, model, r))
-        selected = rand(nearby, model.properties.burst_size)
     end
 
+    selected = rand(nearby, model.properties.burst_size)
     for pos ∈ selected
         roll = rand()
         if roll < 0.45
@@ -336,14 +336,11 @@ function complex_step!(model)
                 infect(phage, target_cell, model)
             end
         end
-
-        if agent.state === :free
-            tick_phage(phage, model)
-        end
     end
 
     filter!(id -> model[id].state === :free, phages)
     for phage ∈ phages
+        tick_phage(phage, model)
         phage_decay(phage, model)
     end
 
