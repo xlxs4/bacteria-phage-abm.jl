@@ -7,6 +7,7 @@ using BenchmarkTools
 using Profile
 using ProfileSVG
 using JET
+using SnoopCompile
 ##
 
 ##
