@@ -61,11 +61,11 @@ function initialize(; N=200, M=20, seed=125)
     )
 
     for n ∈ 1:N/2
-        agent = Bacterium(n, (1, 1), rand() < 0.5 ? :a : :b, Vector{Int}())
+        agent = Bacterium(n, (1, 1), rand(model.rng) < 0.5 ? :a : :b, Vector{Int}())
         add_bacterium_single!(agent, model)
     end
     for n ∈ N/2+1:N
-        roll = rand()
+        roll = rand(model.rng)
         if roll < 0.45
             kind = :temperate
         elseif roll < 0.85
@@ -108,7 +108,7 @@ function p_grow(model)
 end
 
 function phage_decay(phage, model)
-    if rand() < p_phage_decay(model.decay_factor, model[phage].time_in_state)
+    if rand(model.rng) < p_phage_decay(model.decay_factor, model[phage].time_in_state)
         kill_agent!(phage, model)
     end
 end
@@ -138,9 +138,9 @@ function burst(phage, cell, model)
         nearby = collect(nearby_positions(model[phage].pos, model, r))
     end
 
-    selected = rand(nearby, model.properties.burst_size)
+    selected = rand(model.rng, nearby, model.properties.burst_size)
     for pos ∈ selected
-        roll = rand()
+        roll = rand(model.rng)
         if roll < 0.45
             kind = :temperate
         elseif roll < 0.85
@@ -162,7 +162,7 @@ function diffuse(id, model)
     nearby = collect(nearby_positions(agent.pos, model, r))
 
     if agent isa Phage
-        selected = rand(nearby)
+        selected = rand(model.rng, nearby)
         move_agent!(agent, selected, model)
     elseif agent isa Bacterium
         move_bacterium_single!(agent, model, nearby)
@@ -175,7 +175,7 @@ function grow(cell, p_grow, model)
         return isempty(ids) || !any(id -> model[id] isa Bacterium, ids)
     end
 
-    !(rand() < p_grow) && return nothing
+    !(rand(model.rng) < p_grow) && return nothing
 
     environment = model.properties.environment
     if environment === :well_mixed
@@ -193,14 +193,14 @@ function grow(cell, p_grow, model)
     filter!(has_no_bacteria, selected)
     isempty(selected) && return nothing
 
-    target = rand(selected)
+    target = rand(model.rng, selected)
     add_agent!(target, Bacterium, model,
-        rand() < 0.5 ? :a : :b, Vector{Int}())
+        rand(model.rng) < 0.5 ? :a : :b, Vector{Int}())
 end
 
 function bacteria_death_inherent(bacteria, model)
     for id ∈ bacteria
-        if rand() < p_death(model.a, model.b, model.m)
+        if rand(model.rng) < p_death(model.a, model.b, model.m)
             genocide!(model, model[id].phages_inside)
             kill_agent!(id, model)
         end
@@ -215,7 +215,7 @@ function bacteria_death_lysis(bacteria, model)
                 tick_phage(phage, model)
                 agent = model[phage]
                 if (agent.time_in_state ≥ model.latent_period) && (agent.kind === :virulent || agent.kind === :induced_temperate)
-                    if rand() < model.properties.p_burst
+                    if rand(model.rng) < model.properties.p_burst
                         burst(phage, cell, model)
                         break
                     end
@@ -325,11 +325,11 @@ function complex_step!(model)
         nearby_cells = nearby_t(Bacterium, phage, model)
         isnothing(nearby_cells) && continue
 
-        target_cell = rand(nearby_cells)
-        if rand() < p_adsorption(target_cell, model)
+        target_cell = rand(model.rng, nearby_cells)
+        if rand(model.rng) < p_adsorption(target_cell, model)
             kind = agent.kind
             if kind === :temperate
-                if rand() < p_lysis(phage, model.properties.α, model.properties.κ)
+                if rand(model.rng) < p_lysis(phage, model.properties.α, model.properties.κ)
                     agent.kind = :induced_temperate
                 end
             end
