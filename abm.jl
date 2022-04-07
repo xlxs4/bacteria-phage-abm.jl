@@ -316,7 +316,13 @@ function complex_step!(model)
     bacteria_death_lysis(by_single_type(Bacterium)(model), model)
 
     phages = by_single_type(Phage)(model)
-    isempty(phages) && return nothing
+    if isempty(phages)
+        (model.properties.phages_count == 0) && return nothing
+
+        model.properties.bacteria_count = length(by_single_type(Bacterium)(model))
+        model.properties.phages_count = 0
+        return nothing
+    end
 
     filter!(id -> model[id].state === :free, phages) # Tell the compiler these are all ::Phage to help with type inference
     for phage ∈ phages
