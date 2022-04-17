@@ -16,16 +16,13 @@ using Random
 ##
 
 ##
-@agent Bacterium GridAgent{2} begin
+@agent Organism GridAgent{2} begin
     species::Symbol
     phages_inside::Vector{Int}
-end
-
-@agent Phage GridAgent{2} begin
-    species::Symbol
     kind::Symbol
     state::Symbol
     time_in_state::Int
+    type::Symbol
 end
 
 Base.@kwdef mutable struct Parameters
@@ -56,12 +53,12 @@ function initialize(; N=200, M=20, seed=125)
     rng = Random.MersenneTwister(seed)
 
     model = ABM(
-        Union{Bacterium,Phage}, space;
+        Organism, space;
         properties, rng
     )
 
     for n ∈ 1:N/2
-        agent = Bacterium(n, (1, 1), rand(model.rng) < 0.5 ? :a : :b, Vector{Int}())
+        agent = Organism(n, (1, 1), rand(model.rng) < 0.5 ? :a : :b, Vector{Int}(), :nothing, :nothing, -1, :bacterium)
         add_bacterium_single!(agent, model)
     end
     for n ∈ N/2+1:N
@@ -73,7 +70,7 @@ function initialize(; N=200, M=20, seed=125)
         else
             kind = :deficient
         end
-        add_agent!(Phage, model, roll < 0.5 ? :a : :b, kind, :free, 0)
+        add_agent!(Organism, model, roll < 0.5 ? :a : :b, Vector{Int}(), kind, :free, 0, :phage)
     end
 
     return model
@@ -86,19 +83,19 @@ p_death(a, b, m) = a + ((1 - a) / (1 + exp(-b * (-m))))
 p_phage_decay(decay_factor, time_in_state) = 1 - (1 * exp(-decay_factor * time_in_state))
 
 function p_lysis(phage, α, κ)
-    nearby_phages = nearby_t(Phage, phage, model)
+    nearby_phages = nearby_t(:phage, phage, model)
     nearby_phages = isnothing(nearby_phages) ? 0 : length(nearby_phages)
     return 1 / (1 + α * exp(-nearby_phages + κ))
 end
 
 function p_adsorption(cell, model)
-    nearby_phages = nearby_t(Phage, cell, model)
-    p_host = model[cell].species === :a ? 0.9 : 0.1 # Tell the compiler that these are all ::Bacterium to help with type inference
+    nearby_phages = nearby_t(:phage, cell, model)
+    p_host = model[cell].species === :a ? 0.9 : 0.1
     return p_host / (1 + exp(-length(nearby_phages)))
 end
 
 function p_grow(model)
-    cells = by_single_type(Bacterium)(model)
+    cells = by_single_type(:bacterium)(model)
     filter!(id -> isempty(model[id].phages_inside), cells)
     cell_count = length(cells)
 
@@ -148,7 +145,7 @@ function burst(phage, cell, model)
         else
             kind = :deficient
         end
-        add_agent!(pos, Phage, model, roll < 0.5 ? :a : :b, kind, :free, 0)
+        add_agent!(pos, Organism, model, roll < 0.5 ? :a : :b, Vector{Int}(), kind, :free, 0, :phage)
     end
 
     genocide!(model, model[cell].phages_inside)
@@ -161,10 +158,10 @@ function diffuse(id, model)
     r = 3
     nearby = collect(nearby_positions(agent.pos, model, r))
 
-    if agent isa Phage
+    if agent.type === :phage
         selected = rand(model.rng, nearby)
         move_agent!(agent, selected, model)
-    elseif agent isa Bacterium
+    elseif agent.type === :bacterium
         move_bacterium_single!(agent, model, nearby)
     end
 end
@@ -172,7 +169,7 @@ end
 function grow(cell, p_grow, model)
     function has_no_bacteria(pos)
         ids = ids_in_position(pos, model)
-        return isempty(ids) || !any(id -> model[id] isa Bacterium, ids)
+        return isempty(ids) || !any(id -> model[id].type === :bacterium, ids)
     end
 
     !(rand(model.rng) < p_grow) && return nothing
@@ -194,8 +191,8 @@ function grow(cell, p_grow, model)
     isempty(selected) && return nothing
 
     target = rand(model.rng, selected)
-    add_agent!(target, Bacterium, model,
-        rand(model.rng) < 0.5 ? :a : :b, Vector{Int}())
+    add_agent!(target, Organism, model,
+        rand(model.rng) < 0.5 ? :a : :b, Vector{Int}(), :nothing, :nothing, -1, :bacterium)
 end
 
 function bacteria_death_inherent(bacteria, model)
@@ -227,18 +224,18 @@ end
 ##
 
 ##
-function by_single_type(t::DataType)
+function by_single_type(t::Symbol)
     function single_type(model::ABM)
         ids = collect(allids(model))
-        filter!(id -> model[id] isa t, ids)
+        filter!(id -> model[id].type === t, ids)
         return ids
     end
     return single_type
 end
 
-function nearby_t(t::DataType, id, model)
+function nearby_t(t::Symbol, id, model)
     function keep_t_ids(pos)
-        return (id -> model[id] isa t ? id : nothing).(ids_in_position(pos, model))
+        return (id -> model[id].type === t ? id : nothing).(ids_in_position(pos, model))
     end
 
     nearby_pos = collect(nearby_positions(model[id].pos, model, model.properties.infection_distance))
@@ -253,7 +250,7 @@ end
 
 function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, cutoff=0.998)
     function has_no_bacterium(pos, model)
-        return !any((id -> model[id] isa Bacterium).(ids_in_position(pos, model)))
+        return !any((id -> model[id].type === :bacterium).(ids_in_position(pos, model)))
     end
 
     function no_bacterium_positions(model::ABM{<:Agents.DiscreteSpace})
@@ -274,7 +271,7 @@ end
 
 function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, positions::Vector{Tuple{Int,Int}})
     function has_no_bacterium(pos, model)
-        return !any((id -> model[id] isa Bacterium).(ids_in_position(pos, model)))
+        return !any((id -> model[id].type === :bacterium).(ids_in_position(pos, model)))
     end
 
     function no_bacterium_positions(model::ABM{<:Agents.DiscreteSpace}, positions)
@@ -312,23 +309,23 @@ end
 
 ##
 function complex_step!(model)
-    bacteria_death_inherent(by_single_type(Bacterium)(model), model)
-    bacteria_death_lysis(by_single_type(Bacterium)(model), model)
+    bacteria_death_inherent(by_single_type(:bacterium)(model), model)
+    bacteria_death_lysis(by_single_type(:bacterium)(model), model)
 
-    phages = by_single_type(Phage)(model)
+    phages = by_single_type(:phage)(model)
     if isempty(phages)
         (model.properties.phages_count == 0) && return nothing
 
-        model.properties.bacteria_count = length(by_single_type(Bacterium)(model))
+        model.properties.bacteria_count = length(by_single_type(:bacterium)(model))
         model.properties.phages_count = 0
         return nothing
     end
 
-    filter!(id -> model[id].state === :free, phages) # Tell the compiler these are all ::Phage to help with type inference
+    filter!(id -> model[id].state === :free, phages)
     for phage ∈ phages
         agent = model[phage]
 
-        nearby_cells = nearby_t(Bacterium, phage, model)
+        nearby_cells = nearby_t(:bacterium, phage, model)
         isnothing(nearby_cells) && continue
 
         target_cell = rand(model.rng, nearby_cells)
@@ -351,7 +348,7 @@ function complex_step!(model)
         phage_decay(phage, model)
     end
 
-    cells = by_single_type(Bacterium)(model)
+    cells = by_single_type(:bacterium)(model)
     filter!(id -> isempty(model[id].phages_inside), cells)
     p = p_grow(model)
     for cell ∈ cells
@@ -360,8 +357,8 @@ function complex_step!(model)
 
     if model.properties.diffuse
         environment = model.properties.environment
-        cells = by_single_type(Bacterium)(model)
-        phages = by_single_type(Phage)(model)
+        cells = by_single_type(:bacterium)(model)
+        phages = by_single_type(:phage)(model)
         if environment === :semi_solid
             for cell ∈ cells
                 diffuse(cell, model)
@@ -373,8 +370,8 @@ function complex_step!(model)
     end
 
 
-    model.properties.bacteria_count = length(by_single_type(Bacterium)(model))
-    model.properties.phages_count = length(by_single_type(Phage)(model))
+    model.properties.bacteria_count = length(by_single_type(:bacterium)(model))
+    model.properties.phages_count = length(by_single_type(:phage)(model))
 end
 ##
 
