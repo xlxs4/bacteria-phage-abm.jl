@@ -33,7 +33,7 @@ Base.@kwdef mutable struct Parameters
     a::Float64 = 0.0
     b::Float64 = 0.08
     m::Float64 = 27.0
-    α::Float64 = 8
+    α::Float64 = 8.0
     κ::Float64 = 0.05
     moi_proxy_radius::Int = 1
     infection_distance::Int = 1
@@ -47,7 +47,7 @@ end
 ##
 
 ##
-function initialize(; N=200, M=20, seed=125)
+function initialize(; M=20, seed=125)
     space = GridSpace((M, M))
     properties = Parameters()
     rng = Random.MersenneTwister(seed)
@@ -57,11 +57,11 @@ function initialize(; N=200, M=20, seed=125)
         properties, rng
     )
 
-    for n ∈ 1:N/2
+    for n ∈ 1:properties.bacteria_count
         agent = Organism(n, (1, 1), rand(model.rng) < 0.5 ? :a : :b, Vector{Int}(), :nothing, :nothing, -1, :bacterium)
         add_bacterium_single!(agent, model)
     end
-    for n ∈ N/2+1:N
+    for _ ∈ 1:properties.phages_count
         roll = rand(model.rng)
         if roll < 0.45
             kind = :temperate
