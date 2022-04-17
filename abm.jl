@@ -16,6 +16,11 @@ using Random
 ##
 
 ##
+using InteractiveDynamics
+using CairoMakie
+##
+
+##
 @agent Organism GridAgent{2} begin
     species::Symbol
     phages_inside::Vector{Int}
@@ -382,4 +387,24 @@ model = initialize()
 ##
 run!(model, dummystep, complex_step!, 399;
     mdata=[:bacteria_count, :phages_count])
+##
+
+##
+ac(a::A) where {A<:AbstractAgent} = a.type === :bacterium ? :cyan : :magenta
+as = 10
+am(a::A) where {A<:AbstractAgent} = a.type === :bacterium ? :circle : :diamond
+f(model::ABM{<:Agents.DiscreteSpace,A}) where {A<:AbstractAgent} = map(v -> length(v), model.space.s)
+##
+
+##
+heatarray = f
+heatkwargs = (colorrange=(0, 7), colormap=:thermal)
+plotkwargs = (;
+    ac, as, am,
+    scatterkwargs=(strokewidth=1.0,),
+    heatarray, heatkwargs
+)
+
+fig, ax, abmobs = abmplot(model; plotkwargs...)
+fig
 ##

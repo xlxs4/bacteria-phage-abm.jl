@@ -1,6 +1,8 @@
 [deps]
 Agents = "46ada45e-f475-11e8-01d0-f70cc89e6671"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
+InteractiveDynamics = "ec714cd0-5f51-11eb-0b6e-452e7367ff84"
 JET = "c3a54625-cd67-489e-a8e7-0a5a0ff4e31b"
 Profile = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 ProfileSVG = "132c30aa-f267-4189-9183-c8a63c7e05e6"
