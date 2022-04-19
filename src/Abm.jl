@@ -38,6 +38,21 @@ function initialize(; M=33, seed=125)
 end
 
 function plot(model::ABM)
+    params = Dict(
+        :a => 0.0:0.1:1.0,
+        :b => 0.0:0.1:1.0,
+        :m => 0.0:1.0:40.0,
+        :α => 0.0:1.0:100.0,
+        :κ => 0.01:0.01:0.5,
+        :moi_proxy_radius => 1:3,
+        :infection_distance => 1:3,
+        :latent_period => 1:10,
+        :burst_size => 3:8,
+        :growth_rate => 0.2:0.1:1.0,
+        :decay_factor => 0.01:0.01:0.2,
+        :p_burst => 0.4:0.1:0.9
+    )
+
     ac(a::A) where {A<:AbstractAgent} = a.type === :bacterium ? :cyan : :magenta
     as = 10
     am(a::A) where {A<:AbstractAgent} = a.type === :bacterium ? :circle : :diamond
@@ -51,13 +66,13 @@ function plot(model::ABM)
         heatarray, heatkwargs
     )
 
-    fig, ax, abmobs = abmplot(model; model_step! = complex_step!, plotkwargs...)
+    fig, ax, abmobs = abmplot(model; (model_step!)=complex_step!, params, plotkwargs...)
     return fig
 end
 
 function run(model, n)
     run!(model, dummystep, complex_step!, n;
-    mdata=[:bacteria_count, :phages_count])
+        mdata=[:bacteria_count, :phages_count])
 end
 
 function main()
