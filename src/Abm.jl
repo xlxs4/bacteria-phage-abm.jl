@@ -1,7 +1,7 @@
 module Abm
 
 # TODO: make this cleaner, see https://github.com/sbromberger/LightGraphs.jl/blob/master/src/LightGraphs.jl
-using Agents, InteractiveDynamics, Random, CairoMakie
+using Agents, InteractiveDynamics, Random, GLMakie
 
 include("impl.jl")
 include("parameters.jl")
