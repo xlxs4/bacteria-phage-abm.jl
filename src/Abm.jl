@@ -55,12 +55,14 @@ function plot(model::ABM)
     return fig
 end
 
+function run(model, n)
+    run!(model, dummystep, complex_step!, n;
+    mdata=[:bacteria_count, :phages_count])
+end
+
 function main()
     model = initialize()
-
-    run!(model, dummystep, complex_step!, 399;
-        mdata=[:bacteria_count, :phages_count])
-
+    run(model, 399)
     plot(model)
 end
 
