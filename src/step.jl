@@ -22,7 +22,7 @@ function complex_step!(model)
         if rand(model.rng) < p_adsorption(target_cell, model)
             kind = agent.kind
             if kind === :temperate
-                if rand(model.rng) < p_lysis(phage, model.properties.α, model.properties.κ)
+                if rand(model.rng) < p_lysis(phage, model)
                     agent.kind = :induced_temperate
                 end
             end

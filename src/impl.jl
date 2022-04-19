@@ -2,10 +2,10 @@ p_death(a, b, m) = a + ((1 - a) / (1 + exp(-b * (-m))))
 
 p_phage_decay(decay_factor, time_in_state) = 1 - (1 * exp(-decay_factor * time_in_state))
 
-function p_lysis(phage, α, κ)
+function p_lysis(phage, model)
     nearby_phages = nearby_t(:phage, phage, model)
     nearby_phages = isnothing(nearby_phages) ? 0 : length(nearby_phages)
-    return 1 / (1 + α * exp(-nearby_phages + κ))
+    return 1 / (1 + model.properties.α * exp(-nearby_phages + model.properties.κ))
 end
 
 function p_adsorption(cell, model)
