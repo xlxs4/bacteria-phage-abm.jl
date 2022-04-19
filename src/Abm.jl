@@ -8,8 +8,6 @@ include("parameters.jl")
 include("step.jl")
 include("utils.jl")
 
-export main
-
 function initialize(; M=33, seed=125)
     space = GridSpace((M, M))
     properties = Parameters()
@@ -53,8 +51,8 @@ function plot(model::ABM)
         heatarray, heatkwargs
     )
 
-    fig, ax, abmobs = abmplot(model; plotkwargs...)
-    fig
+    fig, ax, abmobs = abmplot(model; model_step! = complex_step!, plotkwargs...)
+    return fig
 end
 
 function main()
