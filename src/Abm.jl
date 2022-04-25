@@ -3,8 +3,6 @@ module Abm
 # TODO: make this cleaner, see https://github.com/sbromberger/LightGraphs.jl/blob/master/src/LightGraphs.jl
 using Agents, InteractiveDynamics, Random, GLMakie
 
-# TODO: replace all "return nothing", replace isnothing() with isempty() where appropriate
-
 include("impl.jl")
 include("parameters.jl")
 include("step.jl")

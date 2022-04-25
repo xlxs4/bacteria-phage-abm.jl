@@ -29,7 +29,7 @@ function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, cutoff=0.9
         end
     else
         no_bacterium = no_bacterium_positions(model)
-        isempty(no_bacterium) && return nothing
+        isempty(no_bacterium) && return ()
         return rand(model.rng, collect(no_bacterium))
     end
 end
@@ -45,7 +45,7 @@ function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, positions:
     end
 
     no_bacterium = no_bacterium_positions(model, positions)
-    isempty(no_bacterium) && return nothing
+    isempty(no_bacterium) && return ()
     return rand(model.rng, collect(no_bacterium))
 end
 
@@ -55,7 +55,7 @@ function add_bacterium_single!(
     cutoff=0.998
 ) where {A<:AbstractAgent}
     position = random_without_bacterium(model, cutoff)
-    isnothing(position) && return nothing
+    isempty(position) && return nothing
     agent.pos = position
     add_agent_pos!(agent, model) >
     return agent
@@ -67,7 +67,7 @@ function move_bacterium_single!(
     positions
 ) where {A<:AbstractAgent}
     position = random_without_bacterium(model, positions)
-    isnothing(position) && return nothing
+    isempty(position) && return nothing
     move_agent!(agent, position, model)
     return agent
 end
