@@ -8,18 +8,9 @@ function by_single_type(t::Symbol)
 end
 
 function nearby_t(t::Symbol, id, model)
-    function keep_t_ids(pos)
-        return (id -> model[id].type === t ? id : nothing).(ids_in_position(pos, model))
-    end
-
-    nearby_pos = collect(nearby_positions(model[id].pos, model, model.properties.infection_distance))
-    filter!(pos -> !Agents.isempty(pos, model), nearby_pos)
-    isempty(nearby_pos) && return nothing
-
-    ids = filter(v -> !isempty(v), keep_t_ids.(nearby_pos))
-    ids = reduce(vcat, ids)
-    ids = convert(Vector{Int}, ids[ids.!=nothing])
-    return isempty(ids) ? nothing : ids
+    ids = collect(nearby_ids(model[id].pos, model, model.properties.infection_distance))
+    filter!(id -> model[id].type === t, ids)
+    return ids
 end
 
 function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, cutoff=0.998)
