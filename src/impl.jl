@@ -4,7 +4,7 @@ p_phage_decay(decay_factor, time_in_state) = 1 - (1 * exp(-decay_factor * time_i
 
 function p_lysis(phage, model)
     nearby_phages = nearby_t(:phage, phage, model)
-    nearby_phages = isnothing(nearby_phages) ? 0 : length(nearby_phages)
+    nearby_phages = length(nearby_phages)
     return 1 / (1 + model.properties.α * exp(-nearby_phages + model.properties.κ))
 end
 
