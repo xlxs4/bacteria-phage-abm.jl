@@ -13,12 +13,13 @@ function nearby_t(t::Symbol, id, model)
     return ids
 end
 
-function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, cutoff=0.998)
+function random_without_bacterium(model::ABM{<:DiscreteSpace}, cutoff=0.998)
     function has_no_bacterium(pos, model)
-        return !any((id -> model[id].type === :bacterium).(ids_in_position(pos, model)))
+        ids = ids_in_position(pos, model)
+        return !any(id -> model[id].type === :bacterium, ids)
     end
 
-    function no_bacterium_positions(model::ABM{<:Agents.DiscreteSpace})
+    function no_bacterium_positions(model::ABM{<:DiscreteSpace})
         return Iterators.filter(i -> has_no_bacterium(i, model), positions(model))
     end
 
@@ -34,13 +35,13 @@ function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, cutoff=0.9
     end
 end
 
-function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, positions::Vector{Tuple{Int,Int}})
+function random_without_bacterium(model::ABM{<:DiscreteSpace}, positions::Vector{Tuple{Int,Int}})
     function has_no_bacterium(pos, model)
         ids = ids_in_position(pos, model)
         return !any(id -> model[id].type === :bacterium, ids)
     end
 
-    function no_bacterium_positions(model::ABM{<:Agents.DiscreteSpace}, positions)
+    function no_bacterium_positions(model::ABM{<:DiscreteSpace}, positions)
         return Iterators.filter(i -> has_no_bacterium(i, model), positions)
     end
 
@@ -51,7 +52,7 @@ end
 
 function add_bacterium_single!(
     agent::A,
-    model::ABM{<:Agents.DiscreteSpace,A};
+    model::ABM{<:DiscreteSpace,A};
     cutoff=0.998
 ) where {A<:AbstractAgent}
     position = random_without_bacterium(model, cutoff)
@@ -63,7 +64,7 @@ end
 
 function move_bacterium_single!(
     agent::A,
-    model::ABM{<:Agents.DiscreteSpace,A},
+    model::ABM{<:DiscreteSpace,A},
     positions
 ) where {A<:AbstractAgent}
     position = random_without_bacterium(model, positions)

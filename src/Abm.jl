@@ -1,7 +1,14 @@
 module Abm
 
 # TODO: make this cleaner, see https://github.com/sbromberger/LightGraphs.jl/blob/master/src/LightGraphs.jl
-using Agents, InteractiveDynamics, Random, GLMakie
+using Agents:
+    @agent, ABM, AbstractAgent, DiscreteSpace, GridSpace, add_agent!,
+    add_agent_pos!, allids, dummystep, genocide!, ids_in_position, kill_agent!,
+    move_agent!, nagents, nearby_ids, nearby_positions, positions, random_position, run!
+
+using InteractiveDynamics: abmplot
+using GLMakie
+using Random: MersenneTwister, rand
 
 include("impl.jl")
 include("parameters.jl")
@@ -11,7 +18,7 @@ include("utils.jl")
 function initialize(; M=33, seed=125)
     space = GridSpace((M, M))
     properties = Parameters()
-    rng = Random.MersenneTwister(seed)
+    rng = MersenneTwister(seed)
 
     model = ABM(
         Organism, space;
@@ -56,7 +63,7 @@ function plot(model::ABM)
     ac(a::A) where {A<:AbstractAgent} = a.type === :bacterium ? :cyan : :magenta
     as = 10
     am(a::A) where {A<:AbstractAgent} = a.type === :bacterium ? :circle : :diamond
-    f(model::ABM{<:Agents.DiscreteSpace,A}) where {A<:AbstractAgent} = map(v -> length(v), model.space.s)
+    f(model::ABM{<:DiscreteSpace,A}) where {A<:AbstractAgent} = map(v -> length(v), model.space.s)
 
     heatarray = f
     heatkwargs = (colorrange=(0, 7), colormap=:thermal)
