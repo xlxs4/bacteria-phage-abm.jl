@@ -8,18 +8,9 @@ function by_single_type(t::Symbol)
 end
 
 function nearby_t(t::Symbol, id, model)
-    function keep_t_ids(pos)
-        return (id -> model[id].type === t ? id : nothing).(ids_in_position(pos, model))
-    end
-
-    nearby_pos = collect(nearby_positions(model[id].pos, model, model.properties.infection_distance))
-    filter!(pos -> !Agents.isempty(pos, model), nearby_pos)
-    isempty(nearby_pos) && return nothing
-
-    ids = filter(v -> !isempty(v), keep_t_ids.(nearby_pos))
-    ids = reduce(vcat, ids)
-    ids = convert(Vector{Int}, ids[ids.!=nothing])
-    return isempty(ids) ? nothing : ids
+    ids = collect(nearby_ids(model[id].pos, model, model.properties.infection_distance))
+    filter!(id -> model[id].type === t, ids)
+    return ids
 end
 
 function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, cutoff=0.998)
@@ -38,14 +29,15 @@ function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, cutoff=0.9
         end
     else
         no_bacterium = no_bacterium_positions(model)
-        isempty(no_bacterium) && return nothing
+        isempty(no_bacterium) && return ()
         return rand(model.rng, collect(no_bacterium))
     end
 end
 
 function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, positions::Vector{Tuple{Int,Int}})
     function has_no_bacterium(pos, model)
-        return !any((id -> model[id].type === :bacterium).(ids_in_position(pos, model)))
+        ids = ids_in_position(pos, model)
+        return !any(id -> model[id].type === :bacterium, ids)
     end
 
     function no_bacterium_positions(model::ABM{<:Agents.DiscreteSpace}, positions)
@@ -53,7 +45,7 @@ function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, positions:
     end
 
     no_bacterium = no_bacterium_positions(model, positions)
-    isempty(no_bacterium) && return nothing
+    isempty(no_bacterium) && return ()
     return rand(model.rng, collect(no_bacterium))
 end
 
@@ -63,7 +55,7 @@ function add_bacterium_single!(
     cutoff=0.998
 ) where {A<:AbstractAgent}
     position = random_without_bacterium(model, cutoff)
-    isnothing(position) && return nothing
+    isempty(position) && return nothing
     agent.pos = position
     add_agent_pos!(agent, model) >
     return agent
@@ -75,7 +67,7 @@ function move_bacterium_single!(
     positions
 ) where {A<:AbstractAgent}
     position = random_without_bacterium(model, positions)
-    isnothing(position) && return nothing
+    isempty(position) && return nothing
     move_agent!(agent, position, model)
     return agent
 end

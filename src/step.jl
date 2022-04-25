@@ -16,7 +16,7 @@ function complex_step!(model)
         agent = model[phage]
 
         nearby_cells = nearby_t(:bacterium, phage, model)
-        isnothing(nearby_cells) && continue
+        isempty(nearby_cells) && continue
 
         target_cell = rand(model.rng, nearby_cells)
         if rand(model.rng) < p_adsorption(target_cell, model)
