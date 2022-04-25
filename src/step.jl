@@ -49,6 +49,7 @@ function complex_step!(model)
         environment = model.properties.environment
         cells = by_single_type(:bacterium)(model)
         phages = by_single_type(:phage)(model)
+        filter!(id -> model[id].state === :free, phages)
         if environment === :semi_solid
             for cell ∈ cells
                 diffuse(cell, model)
