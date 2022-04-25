@@ -36,7 +36,8 @@ end
 
 function random_without_bacterium(model::ABM{<:Agents.DiscreteSpace}, positions::Vector{Tuple{Int,Int}})
     function has_no_bacterium(pos, model)
-        return !any((id -> model[id].type === :bacterium).(ids_in_position(pos, model)))
+        ids = ids_in_position(pos, model)
+        return !any(id -> model[id].type === :bacterium, ids)
     end
 
     function no_bacterium_positions(model::ABM{<:Agents.DiscreteSpace}, positions)
