@@ -4,11 +4,11 @@ function complex_step!(model)
 
     phages = by_single_type(:phage)(model)
     if isempty(phages)
-        (model.properties.phages_count == 0) && return nothing
+        (model.properties.phages_count == 0) && return
 
         model.properties.bacteria_count = length(by_single_type(:bacterium)(model))
         model.properties.phages_count = 0
-        return nothing
+        return
     end
 
     filter!(id -> model[id].state === :free, phages)

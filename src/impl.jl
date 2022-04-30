@@ -92,7 +92,7 @@ function grow(cell, p_grow, model)
         return isempty(ids) || !any(id -> model[id].type === :bacterium, ids)
     end
 
-    !(rand(model.rng) < p_grow) && return nothing
+    !(rand(model.rng) < p_grow) && return
 
     environment = model.properties.environment
     if environment === :well_mixed
@@ -108,7 +108,7 @@ function grow(cell, p_grow, model)
     end
 
     filter!(has_no_bacteria, selected)
-    isempty(selected) && return nothing
+    isempty(selected) && return
 
     target = rand(model.rng, selected)
     add_agent!(target, Organism, model,

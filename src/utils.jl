@@ -56,7 +56,7 @@ function add_bacterium_single!(
     cutoff=0.998
 ) where {A<:AbstractAgent}
     position = random_without_bacterium(model, cutoff)
-    isempty(position) && return nothing
+    isempty(position) && return
     agent.pos = position
     add_agent_pos!(agent, model) >
     return agent
@@ -68,7 +68,7 @@ function move_bacterium_single!(
     positions
 ) where {A<:AbstractAgent}
     position = random_without_bacterium(model, positions)
-    isempty(position) && return nothing
+    isempty(position) && return
     move_agent!(agent, position, model)
     return agent
 end
