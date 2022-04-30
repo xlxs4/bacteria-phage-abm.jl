@@ -6,7 +6,7 @@ using Agents:
     add_agent_pos!, allids, dummystep, genocide!, ids_in_position, kill_agent!,
     move_agent!, nagents, nearby_ids, nearby_positions, positions, random_position, run!
 
-using InteractiveDynamics: abmplot
+using InteractiveDynamics: abmexploration
 using GLMakie
 using Random: MersenneTwister, rand
 
@@ -73,19 +73,14 @@ function plot(model::ABM)
         heatarray, heatkwargs
     )
 
-    fig, ax, abmobs = abmplot(model; (model_step!)=complex_step!, params, plotkwargs...)
+    mdata = [:bacteria_count, :phages_count]
+    fig, p = abmexploration(model; (model_step!)=complex_step!, params, plotkwargs..., mdata)
     return fig
 end
 
 function run(model, n)
     run!(model, dummystep, complex_step!, n;
         mdata=[:bacteria_count, :phages_count])
-end
-
-function main()
-    model = initialize()
-    run(model, 399)
-    plot(model)
 end
 
 end
