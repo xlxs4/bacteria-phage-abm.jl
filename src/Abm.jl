@@ -8,7 +8,7 @@ using Agents:
 
 using InteractiveDynamics: abmexploration
 using GLMakie
-using Random: MersenneTwister, rand
+using Random: Xoshiro, rand
 
 include("impl.jl")
 include("parameters.jl")
@@ -18,7 +18,7 @@ include("utils.jl")
 function initialize(; M=33, seed=125)
     space = GridSpace((M, M))
     properties = Parameters()
-    rng = MersenneTwister(seed)
+    rng = Xoshiro(seed)
 
     model = ABM(
         Organism, space;

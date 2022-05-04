@@ -124,7 +124,7 @@ function bacteria_death_inherent(bacteria, model)
     end
 end
 
-function bacteria_death_lysis(bacteria, model)
+function bacteria_death_lysis(bacteria, model) # TODO: maybe only call this on infected bacteria (check the other (old) methods too)
     for cell ∈ bacteria
         phages_inside = model[cell].phages_inside
         if !isempty(phages_inside)
