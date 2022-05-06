@@ -74,7 +74,7 @@ function plot(model::ABM)
     )
 
     mdata = [:bacteria_count, :phages_count]
-    fig, p = abmexploration(model; (model_step!)=complex_step!, params, plotkwargs..., mdata)
+    fig, p = abmexploration(model; (model_step!)=complex_step!, params, plotkwargs..., mdata, figure = (resolution = (600,600),))
     return fig
 end
 
